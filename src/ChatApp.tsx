@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import Markdown from "react-markdown";
@@ -89,8 +89,51 @@ const ChatApp = () => {
       ]);
     }
   };
+  const MarkdownComponent = {
+    code({ node, inline, className, children, ...props }) {
+      const match = /language-(\w+)/.exec(className || "");
+      return !inline && match ? (
+        <SyntaxHighliter style={vscDarkPlus} language={match[1]} PreTag="div">
+          {String(children).replace(/\n$/, "")}
+        </SyntaxHighliter>
+      ) : (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    h1: ({ node, ...props }) => (
+      <h1 style={{ fontSize: "2em", fontWeight: "bold" }} {...props} />
+    ),
+    h2: ({ node, ...props }) => (
+      <h2 style={{ fontSize: "1.5em", fontWeight: "bold" }} {...props} />
+    ),
+    h3: ({ node, ...props }) => (
+      <h3 style={{ fontSize: "1.17em", fontWeight: "bold" }} {...props} />
+    ),
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
+      <style tsx global>
+        {`
+          @keyframes typing {
+            0% {
+              opacity: 0.3;
+            }
+            50% {
+              opacity: 1;
+            }
+            100% {
+              opacity: 0.3;
+            }
+          }
+
+          .typing-animation {
+            animation: typing 1.5s infinite;
+          }
+        `}
+      </style>
       <header className="bg-blue-600 text-white p-4">
         <h1 className="text-2xl font-bold">Gemini Chat</h1>
       </header>
@@ -116,7 +159,7 @@ const ChatApp = () => {
                   className={`prose max-w-none ${
                     message.isGenerating ? "typing-animation" : ""
                   }`}
-                  // components={MarkdownComponent}
+                  components={MarkdownComponent}
                 >
                   {message.text || "Thinking..."}
                 </Markdown>
