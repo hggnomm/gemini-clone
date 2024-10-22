@@ -1,16 +1,21 @@
-import { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, ChatSession } from "@google/generative-ai";
 import Markdown from "react-markdown";
-import { Prism as SyntaxHighliter } from "react-syntax-highlighter";
-
+import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
+
+interface Message {
+  sender: "user" | "ai";
+  text: string;
+  isGenerating?: boolean;
+}
 
 const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
-const ChatApp = () => {
-  const [messages, setMessages] = useState<any>([
+const ChatApp: React.FC = () => {
+  const [messages, setMessages] = useState<Message[]>([
     {
       sender: "user",
       text: "hello",
@@ -23,7 +28,7 @@ const ChatApp = () => {
   const [input, setInput] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
-  const chatSessionRef = useRef<any>(null);
+  const chatSessionRef = useRef<ChatSession | null>(null);
 
   const scrollToBottom = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -43,18 +48,19 @@ const ChatApp = () => {
       });
     }
   }, [messages]);
-  const handleSubmit = async (e) => {
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     if (!input.trim()) return;
 
-    setMessages((prev: any) => [...prev, { sender: "user", text: input }]);
+    setMessages((prev) => [...prev, { sender: "user", text: input }]);
     setInput("");
     setIsTyping(true);
 
     try {
       let fullResponse = "";
-      const result = await chatSessionRef.current.sendMessageStream(input);
+      const result = await chatSessionRef.current!.sendMessageStream(input);
 
       setMessages((prev) => [
         ...prev,
@@ -89,26 +95,38 @@ const ChatApp = () => {
       ]);
     }
   };
+
   const MarkdownComponent = {
-    code({ node, inline, className, children, ...props }) {
+    code({
+      node,
+      inline,
+      className,
+      children,
+      ...props
+    }: {
+      node?: any;
+      inline?: boolean;
+      className?: string;
+      children: React.ReactNode;
+    }) {
       const match = /language-(\w+)/.exec(className || "");
       return !inline && match ? (
-        <SyntaxHighliter style={vscDarkPlus} language={match[1]} PreTag="div">
+        <SyntaxHighlighter style={vscDarkPlus} language={match[1]} PreTag="div">
           {String(children).replace(/\n$/, "")}
-        </SyntaxHighliter>
+        </SyntaxHighlighter>
       ) : (
         <code className={className} {...props}>
           {children}
         </code>
       );
     },
-    h1: ({ node, ...props }) => (
+    h1: ({ node, ...props }: any) => (
       <h1 style={{ fontSize: "2em", fontWeight: "bold" }} {...props} />
     ),
-    h2: ({ node, ...props }) => (
+    h2: ({ node, ...props }: any) => (
       <h2 style={{ fontSize: "1.5em", fontWeight: "bold" }} {...props} />
     ),
-    h3: ({ node, ...props }) => (
+    h3: ({ node, ...props }: any) => (
       <h3 style={{ fontSize: "1.17em", fontWeight: "bold" }} {...props} />
     ),
   };
@@ -117,28 +135,28 @@ const ChatApp = () => {
     <div className="flex flex-col h-screen bg-gray-100">
       <style tsx global>
         {`
-          @keyframes typing {
-            0% {
-              opacity: 0.3;
-            }
-            50% {
-              opacity: 1;
-            }
-            100% {
-              opacity: 0.3;
-            }
+        @keyframes typing {
+          0% {
+            opacity: 0.3;
           }
+          50% {
+            opacity: 1;
+          }
+          100% {
+            opacity: 0.3;
+          }
+        }
 
-          .typing-animation {
-            animation: typing 1.5s infinite;
-          }
-        `}
+        .typing-animation {
+          animation: typing 1.5s infinite;
+        }
+      `}
       </style>
       <header className="bg-blue-600 text-white p-4">
         <h1 className="text-2xl font-bold">Gemini Chat</h1>
       </header>
       <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((message: any, index: number) => (
+        {messages.map((message, index) => (
           <div
             key={index}
             className={`mb-4 ${
@@ -187,7 +205,7 @@ const ChatApp = () => {
             placeholder="Type a message..."
             onChange={(e) => setInput(e.target.value)}
           />
-          <button className="p-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus-outline:">
+          <button className="p-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600">
             <Send size={24} />
           </button>
         </div>
