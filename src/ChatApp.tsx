@@ -1,9 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Send } from "lucide-react";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import Markdown from "react-markdown";
+import { Prism as SyntaxHighliter } from "react-syntax-highlighter";
+
+import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
 const genAI = new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY);
 const model = genAI.getGenerativeModel({ model: "gemeni-1.5-pro" });
+
 const ChatApp = () => {
   const [messages, setMessages] = useState<any>([
     {
@@ -17,8 +22,8 @@ const ChatApp = () => {
   ]);
   const [input, setInput] = useState<string>("");
   const [isTyping, setIsTyping] = useState<boolean>(false);
-  const messageEndRef = useRef(null);
-  const chatSessionRef = useRef(null);
+  const messageEndRef = useRef<HTMLDivElement | null>(null);
+  const chatSessionRef = useRef<any>(null);
 
   const scrollToBottom = () => {
     messageEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -37,14 +42,23 @@ const ChatApp = () => {
         history: [],
       });
     }
-  }, []);
+  }, [messages]);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!input.trim()) return;
+
+    setMessages((prev) => [...prev, { sender: "user", text: input }]);
+    setInput("");
+    setIsTyping(true);
+  };
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <header className="bg-blue-600 text-white p-4">
         <h1 className="text-2xl font-bold">Gemini Chat</h1>
       </header>
       <div className="flex-1 overflow-y-auto p-4">
-        {messages.map((message: any, index: string) => {
+        {messages.map((message: any, index: number) => (
           <div
             key={index}
             className={`mb-4 ${
@@ -58,11 +72,46 @@ const ChatApp = () => {
                   : "ai-message"
               }`}
             >
-              {message.text}
+              {message.sender === "user" ? (
+                message.text
+              ) : (
+                <Markdown
+                  className={`prose max-w-none ${
+                    message.isGenerating ? "typing-animation" : ""
+                  }`}
+                  // components={MarkdownComponent}
+                >
+                  {message.text || "Thinking..."}
+                </Markdown>
+              )}
             </div>
-          </div>;
-        })}
+          </div>
+        ))}
+
+        {isTyping && (
+          <div className="text-left">
+            <div className="inline-block p-2 rounded-lg bg-gray-300">
+              Typing...
+            </div>
+          </div>
+        )}
+        <div ref={messageEndRef} />
       </div>
+
+      <form onSubmit={handleSubmit} className="p-4 bg-white">
+        <div className="flex items-center">
+          <input
+            type="text"
+            className="flex-1 p-2 border rounded-l-lg focus:outline-none"
+            value={input}
+            placeholder="Type a message..."
+            onChange={(e) => setInput(e.target.value)}
+          />
+          <button className="p-2 bg-blue-500 text-white rounded-r-lg hover:bg-blue-600 focus-outline:">
+            <Send size={24} />
+          </button>
+        </div>
+      </form>
     </div>
   );
 };
