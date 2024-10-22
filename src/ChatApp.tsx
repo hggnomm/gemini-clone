@@ -6,8 +6,8 @@ import { Prism as SyntaxHighliter } from "react-syntax-highlighter";
 
 import { vscDarkPlus } from "react-syntax-highlighter/dist/esm/styles/prism";
 
-const genAI = new GoogleGenerativeAI(import.meta.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({ model: "gemeni-1.5-pro" });
+const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-pro" });
 
 const ChatApp = () => {
   const [messages, setMessages] = useState<any>([
@@ -48,9 +48,46 @@ const ChatApp = () => {
 
     if (!input.trim()) return;
 
-    setMessages((prev) => [...prev, { sender: "user", text: input }]);
+    setMessages((prev: any) => [...prev, { sender: "user", text: input }]);
     setInput("");
     setIsTyping(true);
+
+    try {
+      let fullResponse = "";
+      const result = await chatSessionRef.current.sendMessageStream(input);
+
+      setMessages((prev) => [
+        ...prev,
+        { sender: "ai", text: "", isGenerating: true },
+      ]);
+
+      for await (const chunk of result.stream) {
+        const chunkText = chunk.text();
+        fullResponse += chunkText;
+
+        setMessages((prev) => [
+          ...prev.slice(0, -1),
+          { sender: "ai", text: fullResponse, isGenerating: true },
+        ]);
+      }
+      setMessages((prev) => [
+        ...prev.slice(0, -1),
+        { sender: "ai", text: fullResponse, isGenerating: false },
+      ]);
+
+      setIsTyping(false);
+    } catch (error) {
+      console.log(error);
+      setIsTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "ai",
+          text: "Sorry, there was an error",
+          isGenerating: false,
+        },
+      ]);
+    }
   };
   return (
     <div className="flex flex-col h-screen bg-gray-100">
